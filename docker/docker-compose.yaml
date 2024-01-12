@@ -3,19 +3,22 @@ version: "2.4"  # 3.8 didn't support runtime argument
 
 services:
   lecture_demo:
-    container_name: lecture_demo
-    image: lecture_demo
+    container_name: humble_sandbox
+    image: humble_sandbox
     # network_mode: host  # "host" dangerous. ok for dev work if carefully using network
     privileged: true  # Security risk. For development and prototyping helps. Should not exist in prod version
     stdin_open: true
     tty: true
     runtime: nvidia  # Sometimes required for display / Gui to work on machines with nvidia graphics card
-
+    network_mode: host
     environment:
       ROS_DOMAIN_ID: "1"
-      QT_X!!_NO_MITSHM: "1"  # Required for display / Gui to work
+      QT_X11_NO_MITSHM: "1"  # Required for display / Gui to work
       DISPLAY: $DISPLAY  # Required for display / Gui to work
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${LOCAL_ROS_WORKSPACE_PATH}/src:/main_workspace/src  # this line allows you to mount and sync whatever changes are
+                                                        # happening inside the container (new code, new packages), to
+                                                        # the outside (host machine)
     # command: ros2 run lecture_demo demo_publisher.py  # Using this command the publisher will start automatically
     command: bash
