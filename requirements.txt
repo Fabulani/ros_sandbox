@@ -1,0 +1,8 @@
+ipykernel
+ipympl
+ipywidgets
+numpy
+matplotlib
+tqdm
+SciPy
+opencv-python

@@ -9,7 +9,14 @@ COPY src/ $MAIN_WORKSPACE/src/
 RUN mkdir -p $PACKAGE_WORKSPACE/src
 
 # Install turtlesim for visualization
-RUN apt update && apt install -y ros-humble-turtlesim
+RUN apt update && apt install -y \
+    ros-humble-turtlesim \
+    ros-humble-rviz2 \
+    python3-pip
+
+COPY requirements.txt requirements.txt
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir -r requirements.txt
 
 # installing the velodyne drivers to the PACKAGE_WORKSPACE
 RUN cd ${PACKAGE_WORKSPACE} && \
