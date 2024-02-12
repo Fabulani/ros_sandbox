@@ -1,34 +1,51 @@
 import rosbag2_py
-import rclpy
 from rosidl_runtime_py.utilities import get_message
-from rclpy.serialization import deserialize_message, serialize_message
+from rclpy.serialization import deserialize_message
 
 import struct
 
 def get_rosbag_options(path, serialization_format='cdr'):
     storage_options = rosbag2_py.StorageOptions(uri=path, storage_id='sqlite3')
-
     converter_options = rosbag2_py.ConverterOptions(
         input_serialization_format=serialization_format,
         output_serialization_format=serialization_format)
-
     return storage_options, converter_options
 
 
 def parse_tf(msg):
-    start_point = (0, 0, 0)
-    print("x ", msg.transforms[0].transform.translation.x)
-    return start_point
-    pass
+    """ Parse /tf2 data into a list of Python dictionaries. """
+    tf_data = []
+    for transform in msg.transforms:
+        data = {
+            'timestamp': transform.header.stamp.sec,
+            'frame_id': transform.header.frame_id,
+            'child_frame_id': transform.child_frame_id,
+            'translation': {
+                'x': transform.transform.translation.x,
+                'y': transform.transform.translation.y,
+                'z': transform.transform.translation.z
+            },
+            'rotation': {
+                'x': transform.transform.rotation.x,
+                'y': transform.transform.rotation.y,
+                'z': transform.transform.rotation.z,
+                'w': transform.transform.rotation.w
+            }
+        }
+        tf_data.append(data)
+    return tf_data
 
 
 def parse_PointCloud2(msg):
+    """ Parse /PointCloud2 data into a Python3 list of x,y,z endpoints. """
     # Parse header information
     height = msg.height
     width = msg.width
     point_step = msg.point_step
     row_step = msg.row_step
-    print("height ", height, "\nwidth ", width, "\npoint_step ", point_step, "\nrow_step ", row_step)
+
+    # For debugging:
+    # print("height ", height, "\nwidth ", width, "\npoint_step ", point_step, "\nrow_step ", row_step)
 
     # Extract X, Y, Z fields
     x_offset = None
@@ -61,52 +78,30 @@ def parse_PointCloud2(msg):
 
 
 def filter(bag_path_input):
-
     storage_options, converter_options = get_rosbag_options(bag_path_input)
-
     reader = rosbag2_py.SequentialReader()
     reader.open(storage_options, converter_options)
-    # writer = rosbag2_py.SequentialWriter()
-    # writer.open(storage_options2,converter_options2)
+    topic_types = reader.get_all_topics_and_types()  #! Necessary?
+    type_map = {topic_types[i].name: topic_types[i].type for i in range(len(topic_types))}  #! Necessary?
 
-    topic_types = reader.get_all_topics_and_types()
-    type_map = {topic_types[i].name: topic_types[i].type for i in range(len(topic_types))}
     i = 0
     writeTf = True
     writePointCloud2 = True
+    point_cloud_endpoints = []
     while reader.has_next():
         (topic, data, t) = reader.read_next()
-        msg_type = get_message(type_map[topic])
+        msg_type = get_message(type_map[topic])  #! Necessary?
         msg = deserialize_message(data, msg_type)
 
-        if type_map[topic] == "tf2_msgs/msg/TFMessage" and writeTf:
-            try:
-                parse_tf(msg)
-            except:
-                print("error ")
-            # writeTf = False
-            
-            # sx = str(msg.transforms[0].transform.translation.x)
-            # sy = str(msg.transforms[0].transform.translation.y)
-            pass
+        if topic == "/tf" and writeTf: 
+            tf_data = parse_tf(msg)
 
-
-        if type_map[topic] == "sensor_msgs/msg/PointCloud2" and writePointCloud2:
+        if topic == "/ouster/points" and writePointCloud2:  # PointCloud2
             end_points = parse_PointCloud2(msg)
-            for point in end_points:
-                # print(point)  # if zero3, either barrier hit or inf
-                # closer to 30cm to the lidar -> blocked (zero3)
-                # farther than 50m -> inf (zero3)
-                pass
+            point_cloud_endpoints.append(end_points)
 
-            print(len(end_points))
-            writePointCloud2 = False
-
-        # if topic=="/tf":    
-        #     if not ((msg.transforms[0].header.frame_id == "map" and msg.transforms[0].child_frame_id == "odom")):
-        #         writer.write(topic,serialize_message(msg),t)
-        # else:
-        #     writer.write(topic,serialize_message(msg),t)
+    # TODO: Process point_cloud_endpoints and tf_data here. Save them to .rays file.
+    
 
 if __name__== "__main__":
     filter("../../data/standing_still/lidar_tf_tf_static_points_stationary_bag_1")
