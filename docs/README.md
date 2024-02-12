@@ -34,3 +34,10 @@ For `/tf`:
     - if zero3, either barrier hit or inf
     - closer to 30cm to the lidar -> blocked (zero3)
     - farther than 50m -> inf (zero3)
+
+To generate .rays files:
+- change the path to the desired rosbag in the filter function call. Also change name of output if desired.
+- `python3 parser.py`
+
+To use generated .rays files:
+- inside pyrfm.py, change the filename on line 30.
